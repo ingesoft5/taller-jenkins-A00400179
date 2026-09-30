@@ -13,10 +13,7 @@
 
     <groupId>com.icesi</groupId>
     <artifactId>studytrack-api</artifactId>
-    <!--
-        TODO
-    -->
-    <version>0.0.1-SNAPSHOT</version>
+    <version>1.0.0</version>
     <name>studytrack-api</name>
     <description>Backend REST de StudyTrack (Taller Evaluativo 2 - Ingeniería de Software V)</description>
 
@@ -59,9 +56,11 @@
         </plugins>
     </build>
 
-    <!--
-        ============================================================
-        TODO (Fase 2 - Publicación Inmutable en Nexus):
-    -->
+    <distributionManagement>
+        <repository>
+            <id>nexus</id>
+            <url>http://nexus:8081/repository/maven-releases/</url>
+        </repository>
+    </distributionManagement>
 
 </project>

@@ -1,11 +1,3 @@
-# =============================================================================
-# Taller Evaluativo 2 - Fase 3: Orquestación del Ecosistema CI/CD
-# Sonatype Nexus (repositorio de artefactos: maven-releases + docker-hosted)
-#
-# Complete los TODOs para levantar Nexus.
-# =============================================================================
-version: "3.9"
-
 services:
   nexus:
     image: sonatype/nexus3:3.68.1
@@ -13,14 +5,18 @@ services:
     networks:
       - cicd_network
     ports:
+      - "${NEXUS_UI_PORT}:8081"
+      - "${NEXUS_DOCKER_REGISTRY_PORT}:9080"
     volumes:
+      - nexus_data:/nexus-data
     environment:
+      - INSTALL4J_ADD_VM_PARAMS=-Xms512m -Xmx1536m -XX:MaxDirectMemorySize=1g
     healthcheck:
-      test: 
-      interval: 
-      timeout: 
-      retries: 
-      start_period: 
+      test: ["CMD-SHELL", "curl -fs http://localhost:8081/service/rest/v1/status || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 120s
 
 networks:
   cicd_network:
