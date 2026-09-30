@@ -12,28 +12,31 @@ version: "3.9"
 
 services:
   backend:
-    # TODO
-    container_name: 
+    image: ${NEXUS_REGISTRY}/studytrack-api:${IMAGE_TAG}
+    container_name: studytrack-backend
     ports:
+      - "8080:8080"
     networks:
+      - product-network
     healthcheck:
-      test:
-      interval: 
-      timeout: 
-      retries: 
-      start_period: 
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:8080/api/tasks || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
 
   frontend:
-    # TODO:
-    image: 
-    container_name:
+    image: ${NEXUS_REGISTRY}/studytrack-frontend:${IMAGE_TAG}
+    container_name: studytrack-frontend
     ports:
+      - "3000:3000"
     networks:
+      - product-network
     depends_on:
       backend:
-        condition:
+        condition: service_healthy
 
 networks:
-  # TODO
   product-network:
-    driver: 
+    name: product-network
+    driver: bridge

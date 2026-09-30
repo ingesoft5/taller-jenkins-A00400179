@@ -1,0 +1,6 @@
+com/icesi/studytrack/service/TaskService.class
+com/icesi/studytrack/repository/TaskRepository.class
+com/icesi/studytrack/exception/TaskNotFoundException.class
+com/icesi/studytrack/StudyTrackApplication.class
+com/icesi/studytrack/controller/TaskController.class
+com/icesi/studytrack/model/Task.class

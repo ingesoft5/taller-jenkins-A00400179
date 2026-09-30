@@ -1,41 +1,32 @@
-// =============================================================================
-// Taller Evaluativo 2 - Fase 4: Pipeline Declarativo en Jenkins
-//
-// Complete los TODOs de cada etapa. Recuerde:
-//   - Prohibido el tag ":latest" al publicar en Nexus (empaquetamiento
-//     inmutable, Fase 2).
-//   - Las credenciales (usuario/clave de Nexus, token de GitHub) se
-//     inyectan mediante los IDs configurados en Jenkins > Credentials,
-//     NUNCA en texto plano dentro de este archivo.
-// =============================================================================
-
 pipeline {
     agent any
 
+    triggers {
+        githubPush()
+    }
+
     environment {
-        // TODO
-        IMAGE_TAG = "TODO-DEFINA-EN-UN-STAGE-SCRIPT"
-
-        // TODO
-        NEXUS_REGISTRY   = "TODO-HOST:TODO-PUERTO-DOCKER-REGISTRY"
-        NEXUS_MAVEN_REPO = "TODO-URL-REPOSITORIO-MAVEN-RELEASES"
-
-        // TODO
-        NEXUS_CREDENTIALS_ID = "TODO-ID-CREDENCIAL-NEXUS"
+        IMAGE_TAG = "pendiente"
+        NEXUS_REGISTRY = "localhost:9080"
+        NEXUS_MAVEN_REPO = "http://nexus:8081/repository/maven-releases/"
+        NEXUS_CREDENTIALS_ID = "nexus-credentials"
     }
 
     stages {
-
         stage('Checkout & Test') {
             steps {
                 checkout scm
-
                 script {
-                    // TODO:
+                    def shortCommit = sh(script: 'git rev-parse --short=7 HEAD', returnStdout: true).trim()
+                    env.IMAGE_TAG = "${env.BUILD_NUMBER}-${shortCommit}"
                 }
-
                 dir('backend') {
-                    // TODO
+                    sh 'mvn -B test'
+                }
+            }
+            post {
+                always {
+                    junit allowEmptyResults: true, testResults: 'backend/target/surefire-reports/*.xml'
                 }
             }
         }
@@ -43,23 +34,59 @@ pipeline {
         stage('Package & Tag Inmutable') {
             steps {
                 dir('backend') {
-                    // TODO
+                    sh 'mvn -B versions:set -DnewVersion=${IMAGE_TAG} -DgenerateBackupPoms=false'
+                    sh 'mvn -B package -DskipTests'
+                    sh 'docker build -t ${NEXUS_REGISTRY}/studytrack-api:${IMAGE_TAG} .'
                 }
                 dir('frontend') {
-                    // TODO:
+                    sh 'docker build -t ${NEXUS_REGISTRY}/studytrack-frontend:${IMAGE_TAG} .'
                 }
             }
         }
 
         stage('Publish to Nexus') {
             steps {
-                // TODO
+                withCredentials([usernamePassword(credentialsId: env.NEXUS_CREDENTIALS_ID, usernameVariable: 'NEXUS_USER', passwordVariable: 'NEXUS_PASS')]) {
+                    sh '''
+                        cat > settings-ci.xml <<EOF
+                        <settings>
+                            <servers>
+                                <server>
+                                <id>nexus</id>
+                                <username>${NEXUS_USER}</username>
+                                <password>${NEXUS_PASS}</password>
+                                </server>
+                            </servers>
+                        </settings>
+                        EOF
+                        (cd backend && mvn -B -s ../settings-ci.xml deploy -DskipTests)
+                        rm -f settings-ci.xml
+                        echo "${NEXUS_PASS}" | docker login ${NEXUS_REGISTRY} -u "${NEXUS_USER}" --password-stdin
+                        docker push ${NEXUS_REGISTRY}/studytrack-api:${IMAGE_TAG}
+                        docker push ${NEXUS_REGISTRY}/studytrack-frontend:${IMAGE_TAG}
+                        docker logout ${NEXUS_REGISTRY}
+                    '''
+                }
             }
         }
 
         stage('Deploy & Smoke Test') {
             steps {
-                // TODO
+                sh '''
+                    docker compose -f deploy/docker-compose.yml down || true
+                    docker compose -f deploy/docker-compose.yml up -d
+                    docker network connect product-network jenkins || true
+                    for i in $(seq 1 20); do
+                        if curl -fs http://studytrack-backend:8080/api/tasks > /dev/null; then
+                            echo "Smoke test OK"
+                            exit 0
+                        fi
+                        echo "Intento $i fallido"
+                        sleep 5
+                    done
+                    docker compose -f deploy/docker-compose.yml logs
+                    exit 1
+                '''
             }
         }
     }
