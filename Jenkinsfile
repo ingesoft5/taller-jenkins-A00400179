@@ -6,7 +6,6 @@ pipeline {
     }
 
     environment {
-        IMAGE_TAG = "pendiente"
         NEXUS_REGISTRY = "localhost:9080"
         NEXUS_MAVEN_REPO = "http://nexus:8081/repository/maven-releases/"
         NEXUS_CREDENTIALS_ID = "nexus-credentials"
